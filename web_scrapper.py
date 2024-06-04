@@ -1,48 +1,61 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
 import pandas as pd
 
-# Set up the web driver (Make sure the path to the driver is correct)
-driver = webdriver.Chrome(executable_path= r"C:\Users\conta\anaconda3\Lib\site-packages\typings\selenium\webdriver\chrome\__init__.pyi")
+# Load the HTML file
+file_path = r'E:\timepass\AI-ART\Best Engineering Colleges in USA_ Fees, Scholarships, Eligibility, Courses and Salaries.html'
+with open(file_path, 'r', encoding='utf-8') as file:
+    page_content = file.read()
 
-# Open the website
-url = "https://collegedunia.com/usa/engineering-universities?custom_params=[view:grid]"
-driver.get(url)
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(page_content, 'html.parser')
 
 # Extract data
 universities = []
 
-# Assuming the data is in a grid layout, loop through each university card
-cards = driver.find_elements(By.CLASS_NAME, 'college_card_class_name')  # Replace with actual class name
+# Find all the relevant sections containing the college data
+college_sections = soup.find_all('div', class_='jsx-3157505857 clg-head d-flex')
 
-for card in cards:
-    name = card.find_element(By.CLASS_NAME, 'college_name_class').text.strip()  # Replace with actual class name
-    program = card.find_element(By.CLASS_NAME, 'program_class').text.strip() if card.find_element(By.CLASS_NAME, 'program_class') else ''
-    location = card.find_element(By.CLASS_NAME, 'location_class').text.strip() if card.find_element(By.CLASS_NAME, 'location_class') else ''
-    tuition_fees = card.find_element(By.CLASS_NAME, 'fees_class').text.strip() if card.find_element(By.CLASS_NAME, 'fees_class') else ''
-    living_costs = card.find_element(By.CLASS_NAME, 'living_costs_class').text.strip() if card.find_element(By.CLASS_NAME, 'living_costs_class') else ''
-    application_deadlines = card.find_element(By.CLASS_NAME, 'deadlines_class').text.strip() if card.find_element(By.CLASS_NAME, 'deadlines_class') else ''
-    application_fees = card.find_element(By.CLASS_NAME, 'app_fees_class').text.strip() if card.find_element(By.CLASS_NAME, 'app_fees_class') else ''
-    acceptance_rate = card.find_element(By.CLASS_NAME, 'acceptance_rate_class').text.strip() if card.find_element(By.CLASS_NAME, 'acceptance_rate_class') else ''
-    avg_salary = card.find_element(By.CLASS_NAME, 'avg_salary_class').text.strip() if card.find_element(By.CLASS_NAME, 'avg_salary_class') else ''
-    
-    universities.append({
-        'University Name': name,
-        'Program Name': program,
-        'Location': location,
-        'Tuition Fees': tuition_fees,
-        'Living Costs': living_costs,
-        'Application Deadlines': application_deadlines,
-        'Application Fees': application_fees,
-        'Acceptance Rate': acceptance_rate,
-        'Average Salary Post-Graduation': avg_salary
-    })
+for section in college_sections:
+    try:
+        university_name = section.find('a').text.strip()
+    except AttributeError:
+        university_name = 'N/A'
+
+    try:
+        location = section.find('span', class_='jsx-3157505857 location-badge').text.strip()
+    except AttributeError:
+        location = 'N/A'
+
+    # Find the sibling paragraphs for the program details
+    next_sibling = section.find_next_sibling('div')
+    if next_sibling:
+        programs = next_sibling.find_all('p')
+        for program in programs:
+            details = program.get_text(separator='|').split('|')
+            if len(details) >= 2:
+                program_name = details[0].strip()
+                tuition_fees = details[1].strip()
+
+                university_data = {
+                    'University Name': university_name,
+                    'Program Name': program_name,
+                    'Location': location,
+                    'Tuition Fees': tuition_fees,
+                    'Living Costs': 'N/A',  # Adjust this if living costs are available in the text
+                    'Application Deadlines': 'N/A',  # Adjust this if deadlines are available in the text
+                    'Application Fees': 'N/A',  # Adjust this if fees are available in the text
+                    'Acceptance Rate': 'N/A',  # Adjust this if acceptance rates are available in the text
+                    'Average Salary Post-Graduation': 'N/A'  # Adjust this if salary is available in the text
+                }
+                universities.append(university_data)
+    else:
+        print(f"Next sibling not found for university: {university_name}")
 
 # Create a DataFrame
 df = pd.DataFrame(universities)
 
 # Save to Excel
-df.to_excel('Engineering_Universities_in_USA.xlsx', index=False)
+df.to_excel('Engineering_Universities_in_USA2.xlsx', index=False)
 
-# Close the driver
-driver.quit()
+# Display the DataFrame
+print(df)
